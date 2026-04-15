@@ -37,7 +37,6 @@ class _HomeScreenState extends State<HomeScreen> {
     return Scaffold(
       appBar: AppBar(
         title: const Text('EmojiTrack'),
-        centerTitle: false, // Align title to left to make room for welcome message
         actions: [
           GestureDetector(
             onTap: () => Navigator.push(
@@ -48,11 +47,19 @@ class _HomeScreenState extends State<HomeScreen> {
               padding: const EdgeInsets.only(right: 16.0),
               child: CircleAvatar(
                 radius: 18,
-                backgroundColor: Colors.teal[100],
-                child: Text(
-                  initial,
-                  style: const TextStyle(color: Colors.teal, fontWeight: FontWeight.bold),
-                ),
+                backgroundColor: Theme.of(context).colorScheme.primaryContainer,
+                backgroundImage: user?.profileImagePath != null 
+                    ? FileImage(File(user!.profileImagePath!)) 
+                    : null,
+                child: user?.profileImagePath == null
+                    ? Text(
+                        initial,
+                        style: TextStyle(
+                          color: Theme.of(context).colorScheme.onPrimaryContainer,
+                          fontWeight: FontWeight.bold
+                        ),
+                      )
+                    : null,
               ),
             ),
           ),
@@ -60,7 +67,7 @@ class _HomeScreenState extends State<HomeScreen> {
       ),
       body: Column(
         children: [
-          if (_currentIndex == 0) // Only show welcome on the Log tab
+          if (_currentIndex == 0)
             Padding(
               padding: const EdgeInsets.all(16.0),
               child: Align(

@@ -1,7 +1,10 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:image_picker/image_picker.dart';
 import '../providers/auth_provider.dart';
 import '../providers/theme_provider.dart';
+import 'theme_settings_screen.dart';
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
@@ -14,6 +17,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
   late TextEditingController _userController;
   late TextEditingController _emailController;
   bool _isEditing = false;
+  final ImagePicker _picker = ImagePicker();
 
   @override
   void initState() {
@@ -30,10 +34,20 @@ class _ProfileScreenState extends State<ProfileScreen> {
     super.dispose();
   }
 
+  Future<void> _pickImage() async {
+    final XFile? image = await _picker.pickImage(source: ImageSource.gallery);
+    if (image != null) {
+      await context.read<AuthProvider>().updateUser(
+            _userController.text,
+            _emailController.text,
+            profilePath: image.path,
+          );
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final auth = context.watch<AuthProvider>();
-    final themeProvider = context.watch<ThemeProvider>();
     final user = auth.currentUser;
 
     return Scaffold(
@@ -61,13 +75,34 @@ class _ProfileScreenState extends State<ProfileScreen> {
         padding: const EdgeInsets.all(24.0),
         child: Column(
           children: [
-            CircleAvatar(
-              radius: 50,
-              backgroundColor: Theme.of(context).colorScheme.primary,
-              child: Text(
-                user?.username.substring(0, 1).toUpperCase() ?? '?',
-                style: const TextStyle(fontSize: 40, color: Colors.white),
-              ),
+            Stack(
+              children: [
+                CircleAvatar(
+                  radius: 60,
+                  backgroundColor: Theme.of(context).colorScheme.primary,
+                  backgroundImage: user?.profileImagePath != null 
+                      ? FileImage(File(user!.profileImagePath!)) 
+                      : null,
+                  child: user?.profileImagePath == null
+                      ? Text(
+                          user?.username.substring(0, 1).toUpperCase() ?? '?',
+                          style: const TextStyle(fontSize: 40, color: Colors.white),
+                        )
+                      : null,
+                ),
+                Positioned(
+                  bottom: 0,
+                  right: 0,
+                  child: CircleAvatar(
+                    backgroundColor: Theme.of(context).colorScheme.secondary,
+                    radius: 20,
+                    child: IconButton(
+                      icon: const Icon(Icons.camera_alt, size: 20, color: Colors.white),
+                      onPressed: _pickImage,
+                    ),
+                  ),
+                ),
+              ],
             ),
             const SizedBox(height: 30),
             
@@ -91,22 +126,18 @@ class _ProfileScreenState extends State<ProfileScreen> {
               ),
             ),
             
-            const SizedBox(height: 40),
-            const Align(
-              alignment: Alignment.centerLeft,
-              child: Text('App Theme', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-            ),
-            const SizedBox(height: 10),
-            
-            // Theme Selector
-            Wrap(
-              spacing: 10,
-              children: [
-                _themeChip(context, themeProvider, AppTheme.light, 'Light', Colors.teal),
-                _themeChip(context, themeProvider, AppTheme.dark, 'Dark', Colors.black),
-                _themeChip(context, themeProvider, AppTheme.lightFilter, 'Sepia', Colors.orange),
-                _themeChip(context, themeProvider, AppTheme.pink, 'Pink', Colors.pinkAccent),
-              ],
+            const SizedBox(height: 30),
+            Card(
+              child: ListTile(
+                leading: const Icon(Icons.palette_outlined),
+                title: const Text('Appearance'),
+                subtitle: const Text('Change app theme and colors'),
+                trailing: const Icon(Icons.chevron_right),
+                onTap: () => Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (context) => const ThemeSettingsScreen()),
+                ),
+              ),
             ),
             
             const SizedBox(height: 60),
@@ -121,8 +152,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 icon: const Icon(Icons.logout),
                 label: const Text('Logout'),
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.red[50],
-                  foregroundColor: Colors.red,
+                  backgroundColor: Theme.of(context).colorScheme.errorContainer,
+                  foregroundColor: Theme.of(context).colorScheme.error,
                   elevation: 0,
                 ),
               ),
@@ -130,19 +161,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
           ],
         ),
       ),
-    );
-  }
-
-  Widget _themeChip(BuildContext context, ThemeProvider tp, AppTheme theme, String label, Color color) {
-    final isSelected = tp.currentTheme == theme;
-    return ChoiceChip(
-      label: Text(label),
-      selected: isSelected,
-      onSelected: (selected) {
-        if (selected) tp.setTheme(theme);
-      },
-      selectedColor: color.withOpacity(0.2),
-      labelStyle: TextStyle(color: isSelected ? color : null, fontWeight: isSelected ? FontWeight.bold : null),
     );
   }
 }

@@ -11,9 +11,13 @@ class UserModel extends HiveObject {
   @HiveField(2)
   final String password;
 
+  @HiveField(3)
+  final String? profileImagePath;
+
   UserModel({
     required this.username,
     required this.email,
     required this.password,
+    this.profileImagePath,
   });
 }

@@ -16,11 +16,14 @@ dependencies:
   hive_flutter: ^1.1.0
   intl: ^0.20.2
   path_provider: ^2.1.2
-  fl_chart: ^1.2.0
-  record: ^6.2.0
+  fl_chart: ^0.66.0
+  record: ^5.1.0
   audioplayers: ^6.0.0
   flutter_local_notifications: ^17.1.2
   timezone: ^0.9.2
+  image_picker: ^1.0.7
+  pdf: ^3.10.7
+  printing: ^5.11.1
 
 dev_dependencies:
   flutter_test:

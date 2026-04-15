@@ -37,19 +37,18 @@ class AuthProvider with ChangeNotifier {
     return false;
   }
 
-  Future<void> updateUser(String newUsername, String newEmail) async {
+  Future<void> updateUser(String newUsername, String newEmail, {String? profilePath}) async {
     if (_currentUser == null) return;
     
     final box = await Hive.openBox<UserModel>(boxName);
     
-    // Create new user object with updated info
     final updatedUser = UserModel(
       username: newUsername,
       email: newEmail,
       password: _currentUser!.password,
+      profileImagePath: profilePath ?? _currentUser!.profileImagePath,
     );
 
-    // If email changed, we delete the old entry and add new one (since email is key)
     if (_currentUser!.email != newEmail) {
       await box.delete(_currentUser!.email);
     }
