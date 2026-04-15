@@ -5,6 +5,7 @@ import 'models/mood_entry.dart';
 import 'models/user_model.dart';
 import 'providers/mood_provider.dart';
 import 'providers/auth_provider.dart';
+import 'providers/theme_provider.dart';
 import 'screens/home_screen.dart';
 import 'screens/login_screen.dart';
 import 'services/notification_service.dart';
@@ -26,6 +27,7 @@ void main() async {
     MultiProvider(
       providers: [
         ChangeNotifierProvider(create: (_) => AuthProvider()),
+        ChangeNotifierProvider(create: (_) => ThemeProvider()),
         ChangeNotifierProvider(create: (_) => MoodProvider()..loadEntries()),
       ],
       child: const MoodTrackApp(),
@@ -38,18 +40,19 @@ class MoodTrackApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
-      title: 'EmojiTrack',
-      debugShowCheckedModeBanner: false,
-      theme: ThemeData(
-        colorScheme: ColorScheme.fromSeed(seedColor: Colors.teal),
-        useMaterial3: true,
-      ),
-      home: Consumer<AuthProvider>(
-        builder: (context, auth, _) {
-          return auth.isAuthenticated ? const HomeScreen() : const LoginScreen();
-        },
-      ),
+    return Consumer<ThemeProvider>(
+      builder: (context, themeProvider, _) {
+        return MaterialApp(
+          title: 'EmojiTrack',
+          debugShowCheckedModeBanner: false,
+          theme: themeProvider.themeData,
+          home: Consumer<AuthProvider>(
+            builder: (context, auth, _) {
+              return auth.isAuthenticated ? const HomeScreen() : const LoginScreen();
+            },
+          ),
+        );
+      },
     );
   }
 }

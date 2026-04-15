@@ -12,7 +12,7 @@ class AuthProvider with ChangeNotifier {
   Future<void> register(String username, String email, String password) async {
     final box = await Hive.openBox<UserModel>(boxName);
     final user = UserModel(username: username, email: email, password: password);
-    await box.put(email, user); // Using email as key
+    await box.put(email, user);
     _currentUser = user;
     notifyListeners();
   }
@@ -20,7 +20,6 @@ class AuthProvider with ChangeNotifier {
   Future<bool> login(String identifier, String password) async {
     final box = await Hive.openBox<UserModel>(boxName);
     
-    // Check if identifier is email or username
     UserModel? user;
     try {
       user = box.values.firstWhere(
@@ -36,6 +35,28 @@ class AuthProvider with ChangeNotifier {
       return true;
     }
     return false;
+  }
+
+  Future<void> updateUser(String newUsername, String newEmail) async {
+    if (_currentUser == null) return;
+    
+    final box = await Hive.openBox<UserModel>(boxName);
+    
+    // Create new user object with updated info
+    final updatedUser = UserModel(
+      username: newUsername,
+      email: newEmail,
+      password: _currentUser!.password,
+    );
+
+    // If email changed, we delete the old entry and add new one (since email is key)
+    if (_currentUser!.email != newEmail) {
+      await box.delete(_currentUser!.email);
+    }
+    
+    await box.put(newEmail, updatedUser);
+    _currentUser = updatedUser;
+    notifyListeners();
   }
 
   void logout() {

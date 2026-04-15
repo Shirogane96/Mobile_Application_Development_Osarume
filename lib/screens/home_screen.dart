@@ -6,8 +6,10 @@ import 'package:path_provider/path_provider.dart';
 import 'package:path/path.dart' as p;
 import '../models/mood_entry.dart';
 import '../providers/mood_provider.dart';
+import '../providers/auth_provider.dart';
 import 'history_screen.dart';
 import 'analytics_screen.dart';
+import 'profile_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -27,12 +29,51 @@ class _HomeScreenState extends State<HomeScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final user = context.watch<AuthProvider>().currentUser;
+    final initial = user?.username.isNotEmpty == true 
+        ? user!.username[0].toUpperCase() 
+        : '?';
+
     return Scaffold(
       appBar: AppBar(
         title: const Text('EmojiTrack'),
-        centerTitle: true,
+        centerTitle: false, // Align title to left to make room for welcome message
+        actions: [
+          GestureDetector(
+            onTap: () => Navigator.push(
+              context,
+              MaterialPageRoute(builder: (context) => const ProfileScreen()),
+            ),
+            child: Padding(
+              padding: const EdgeInsets.only(right: 16.0),
+              child: CircleAvatar(
+                radius: 18,
+                backgroundColor: Colors.teal[100],
+                child: Text(
+                  initial,
+                  style: const TextStyle(color: Colors.teal, fontWeight: FontWeight.bold),
+                ),
+              ),
+            ),
+          ),
+        ],
       ),
-      body: _screens[_currentIndex],
+      body: Column(
+        children: [
+          if (_currentIndex == 0) // Only show welcome on the Log tab
+            Padding(
+              padding: const EdgeInsets.all(16.0),
+              child: Align(
+                alignment: Alignment.centerLeft,
+                child: Text(
+                  'Welcome, ${user?.username ?? 'User'}! 👋',
+                  style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
+                ),
+              ),
+            ),
+          Expanded(child: _screens[_currentIndex]),
+        ],
+      ),
       bottomNavigationBar: BottomNavigationBar(
         currentIndex: _currentIndex,
         onTap: (index) => setState(() => _currentIndex = index),
