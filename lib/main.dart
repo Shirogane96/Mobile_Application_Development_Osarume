@@ -8,7 +8,6 @@ import 'providers/auth_provider.dart';
 import 'providers/theme_provider.dart';
 import 'screens/home_screen.dart';
 import 'screens/login_screen.dart';
-import 'services/notification_service.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -17,11 +16,6 @@ void main() async {
   await Hive.initFlutter();
   Hive.registerAdapter(MoodEntryAdapter());
   Hive.registerAdapter(UserModelAdapter());
-  
-  // Initialize Notifications
-  final notificationService = NotificationService();
-  await notificationService.init();
-  await notificationService.scheduleDailyReminder();
   
   runApp(
     MultiProvider(

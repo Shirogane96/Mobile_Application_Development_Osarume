@@ -3,7 +3,7 @@ import 'package:provider/provider.dart';
 import 'package:fl_chart/fl_chart.dart';
 import '../providers/mood_provider.dart';
 
-enum ChartType { pie, bar, line }
+enum ChartType { pie, bar, radar }
 
 class AnalyticsScreen extends StatefulWidget {
   const AnalyticsScreen({super.key});
@@ -43,14 +43,14 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
                     items: const [
                       DropdownMenuItem(value: ChartType.pie, child: Text('Distribution (Pie)')),
                       DropdownMenuItem(value: ChartType.bar, child: Text('Frequency (Bar)')),
-                      DropdownMenuItem(value: ChartType.line, child: Text('Timeline (Line)')),
+                      DropdownMenuItem(value: ChartType.radar, child: Text('Balance (Radar)')),
                     ],
                   ),
                 ],
               ),
               const SizedBox(height: 20),
               Container(
-                height: 350,
+                height: 400,
                 padding: const EdgeInsets.all(16),
                 decoration: BoxDecoration(
                   color: Theme.of(context).cardColor,
@@ -113,8 +113,8 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
         return _buildPieChart(provider);
       case ChartType.bar:
         return _buildBarChart(provider);
-      case ChartType.line:
-        return _buildLineChart(provider);
+      case ChartType.radar:
+        return _buildRadarChart(provider);
     }
   }
 
@@ -185,50 +185,27 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
     );
   }
 
-  Widget _buildLineChart(MoodProvider provider) {
-    final entries = provider.entries.reversed.take(10).toList();
-    final Map<String, double> moodScores = {'😊': 5, '😐': 3, '😔': 1, '😡': 1, '😴': 2};
+  Widget _buildRadarChart(MoodProvider provider) {
+    final Map<String, int> counts = {};
+    provider.moodColors.keys.forEach((emoji) => counts[emoji] = 0);
+    for (var entry in provider.entries) {
+      counts[entry.emoji] = (counts[entry.emoji] ?? 0) + 1;
+    }
 
-    return LineChart(
-      LineChartData(
-        lineBarsData: [
-          LineChartBarData(
-            spots: List.generate(entries.length, (i) {
-              return FlSpot(i.toDouble(), moodScores[entries[i].emoji] ?? 3);
-            }),
-            isCurved: true,
-            color: Theme.of(context).colorScheme.primary,
-            barWidth: 4,
-            dotData: FlDotData(
-              show: true,
-              getDotPainter: (spot, percent, barData, index) {
-                return FlDotCirclePainter(
-                  radius: 6,
-                  color: provider.moodColors[entries[index].emoji] ?? Colors.grey,
-                  strokeWidth: 2,
-                  strokeColor: Colors.white,
-                );
-              },
-            ),
+    return RadarChart(
+      RadarChartData(
+        dataSets: [
+          RadarDataSet(
+            fillColor: Theme.of(context).colorScheme.primary.withOpacity(0.2),
+            borderColor: Theme.of(context).colorScheme.primary,
+            entryRadius: 3,
+            dataEntries: counts.values.map((count) => RadarEntry(value: count.toDouble())).toList(),
           ),
         ],
-        titlesData: FlTitlesData(
-          bottomTitles: AxisTitles(
-            sideTitles: SideTitles(
-              showTitles: true,
-              getTitlesWidget: (value, meta) {
-                int index = value.toInt();
-                if (index >= 0 && index < entries.length) {
-                  return Text(entries[index].emoji, style: const TextStyle(fontSize: 16));
-                }
-                return const Text('');
-              },
-            ),
-          ),
-          leftTitles: const AxisTitles(sideTitles: SideTitles(showTitles: true, reservedSize: 30)),
-          topTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
-          rightTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
-        ),
+        radarBackgroundColor: Colors.transparent,
+        getTitle: (index, angle) => RadarChartTitle(text: counts.keys.elementAt(index), angle: angle),
+        tickCount: 3,
+        ticksTextStyle: const TextStyle(color: Colors.grey, fontSize: 10),
       ),
     );
   }

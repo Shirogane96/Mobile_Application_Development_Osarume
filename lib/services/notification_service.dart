@@ -12,42 +12,42 @@ class NotificationService {
   Future<void> init() async {
     tz.initializeTimeZones();
     
-    const AndroidInitializationSettings initializationSettingsAndroid =
-        AndroidInitializationSettings('@mipmap/ic_launcher');
-
     const InitializationSettings initializationSettings = InitializationSettings(
-      android: initializationSettingsAndroid,
+      android: AndroidInitializationSettings('@mipmap/ic_launcher'),
     );
 
-    await _notificationsPlugin.initialize(initializationSettings);
+    // Using named parameter 'initializationSettings' for compatibility
+    await _notificationsPlugin.initialize(
+      initializationSettings,
+      onDidReceiveNotificationResponse: (NotificationResponse details) {},
+    );
   }
 
   Future<void> scheduleDailyReminder() async {
+    const AndroidNotificationDetails androidDetails = AndroidNotificationDetails(
+      'daily_reminder_channel',
+      'Daily Reminders',
+      channelDescription: 'Daily mood tracking reminders',
+      importance: Importance.max,
+      priority: Priority.high,
+    );
+
+    // Using ONLY named arguments as required by the version 21+ compiler
     await _notificationsPlugin.zonedSchedule(
-      0,
-      'Mood Check! 😊',
-      'How are you feeling today? Take a moment to log your mood.',
-      _nextInstanceOf8PM(),
-      const NotificationDetails(
-        android: AndroidNotificationDetails(
-          'daily_reminder_channel',
-          'Daily Reminders',
-          channelDescription: 'Daily mood tracking reminders',
-          importance: Importance.max,
-          priority: Priority.high,
-        ),
-      ),
+      id: 0,
+      title: 'Mood Check! 😊',
+      body: 'How are you feeling today? Take a moment to log your mood.',
+      scheduledDate: _nextInstanceOf8PM(),
+      notificationDetails: const NotificationDetails(android: androidDetails),
       androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
-      uiLocalNotificationDateInterpretation:
-          UILocalNotificationDateInterpretation.absoluteTime,
+      uiLocalNotificationDateInterpretation: UILocalNotificationDateInterpretation.absoluteTime,
       matchDateTimeComponents: DateTimeComponents.time,
     );
   }
 
   tz.TZDateTime _nextInstanceOf8PM() {
     final tz.TZDateTime now = tz.TZDateTime.now(tz.local);
-    tz.TZDateTime scheduledDate =
-        tz.TZDateTime(tz.local, now.year, now.month, now.day, 20); // 8:00 PM
+    tz.TZDateTime scheduledDate = tz.TZDateTime(tz.local, now.year, now.month, now.day, 20);
     if (scheduledDate.isBefore(now)) {
       scheduledDate = scheduledDate.add(const Duration(days: 1));
     }
