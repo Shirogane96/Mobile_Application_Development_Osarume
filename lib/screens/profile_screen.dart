@@ -1,5 +1,6 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:provider/provider.dart';
 import 'package:image_picker/image_picker.dart';
 import '../providers/auth_provider.dart';
@@ -35,14 +36,66 @@ class _ProfileScreenState extends State<ProfileScreen> {
   }
 
   Future<void> _pickImage() async {
-    final XFile? image = await _picker.pickImage(source: ImageSource.gallery);
-    if (image != null) {
-      await context.read<AuthProvider>().updateUser(
-            _userController.text,
-            _emailController.text,
-            profilePath: image.path,
+    try {
+      final XFile? image = await _picker.pickImage(
+        source: ImageSource.gallery,
+        imageQuality: 50,
+      );
+      
+      if (image != null) {
+        final auth = context.read<AuthProvider>();
+        await auth.updateUser(
+          _userController.text,
+          _emailController.text,
+          profilePath: image.path,
+        );
+        
+        if (mounted) {
+          setState(() {}); 
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Profile picture updated!')),
           );
+        }
+      }
+    } catch (e) {
+      debugPrint('Error picking image: $e');
     }
+  }
+
+  Widget _buildAvatar(String? path, double radius, double fontSize) {
+    final user = context.read<AuthProvider>().currentUser;
+    final initial = user?.username.isNotEmpty == true ? user!.username[0].toUpperCase() : '?';
+
+    if (path == null || path.isEmpty) {
+      return Container(
+        width: radius * 2,
+        height: radius * 2,
+        decoration: BoxDecoration(
+          color: Theme.of(context).colorScheme.primary,
+          shape: BoxShape.circle,
+        ),
+        child: Center(
+          child: Text(
+            initial,
+            style: TextStyle(fontSize: fontSize, color: Colors.white),
+          ),
+        ),
+      );
+    }
+
+    return Container(
+      key: ValueKey(path),
+      width: radius * 2,
+      height: radius * 2,
+      decoration: BoxDecoration(
+        color: Theme.of(context).colorScheme.primary,
+        shape: BoxShape.circle,
+        image: DecorationImage(
+          image: kIsWeb ? NetworkImage(path) : FileImage(File(path)) as ImageProvider,
+          fit: BoxFit.cover,
+        ),
+      ),
+    );
   }
 
   @override
@@ -77,19 +130,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
           children: [
             Stack(
               children: [
-                CircleAvatar(
-                  radius: 60,
-                  backgroundColor: Theme.of(context).colorScheme.primary,
-                  backgroundImage: user?.profileImagePath != null 
-                      ? FileImage(File(user!.profileImagePath!)) 
-                      : null,
-                  child: user?.profileImagePath == null
-                      ? Text(
-                          user?.username.substring(0, 1).toUpperCase() ?? '?',
-                          style: const TextStyle(fontSize: 40, color: Colors.white),
-                        )
-                      : null,
-                ),
+                _buildAvatar(user?.profileImagePath, 60, 40),
                 Positioned(
                   bottom: 0,
                   right: 0,

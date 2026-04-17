@@ -1,5 +1,6 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:provider/provider.dart';
 import 'package:record/record.dart';
 import 'package:path_provider/path_provider.dart';
@@ -27,12 +28,49 @@ class _HomeScreenState extends State<HomeScreen> {
     const AnalyticsScreen(),
   ];
 
+  Widget _buildAvatar(String? path, double radius, double fontSize) {
+    final user = context.read<AuthProvider>().currentUser;
+    final initial = user?.username.isNotEmpty == true ? user!.username[0].toUpperCase() : '?';
+
+    if (path == null || path.isEmpty) {
+      return Container(
+        width: radius * 2,
+        height: radius * 2,
+        decoration: BoxDecoration(
+          color: Theme.of(context).colorScheme.primaryContainer,
+          shape: BoxShape.circle,
+        ),
+        child: Center(
+          child: Text(
+            initial,
+            style: TextStyle(
+              fontSize: fontSize,
+              color: Theme.of(context).colorScheme.onPrimaryContainer,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+        ),
+      );
+    }
+
+    return Container(
+      key: ValueKey(path),
+      width: radius * 2,
+      height: radius * 2,
+      decoration: BoxDecoration(
+        color: Theme.of(context).colorScheme.primaryContainer,
+        shape: BoxShape.circle,
+        image: DecorationImage(
+          image: kIsWeb ? NetworkImage(path) : FileImage(File(path)) as ImageProvider,
+          fit: BoxFit.cover,
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final user = context.watch<AuthProvider>().currentUser;
-    final initial = user?.username.isNotEmpty == true 
-        ? user!.username[0].toUpperCase() 
-        : '?';
 
     return Scaffold(
       appBar: AppBar(
@@ -45,22 +83,7 @@ class _HomeScreenState extends State<HomeScreen> {
             ),
             child: Padding(
               padding: const EdgeInsets.only(right: 16.0),
-              child: CircleAvatar(
-                radius: 18,
-                backgroundColor: Theme.of(context).colorScheme.primaryContainer,
-                backgroundImage: user?.profileImagePath != null 
-                    ? FileImage(File(user!.profileImagePath!)) 
-                    : null,
-                child: user?.profileImagePath == null
-                    ? Text(
-                        initial,
-                        style: TextStyle(
-                          color: Theme.of(context).colorScheme.onPrimaryContainer,
-                          fontWeight: FontWeight.bold
-                        ),
-                      )
-                    : null,
-              ),
+              child: _buildAvatar(user?.profileImagePath, 18, 14),
             ),
           ),
         ],
