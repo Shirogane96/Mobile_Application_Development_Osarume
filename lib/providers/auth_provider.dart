@@ -1,21 +1,38 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:hive_flutter/hive_flutter.dart';
 import '../models/user_model.dart';
 
 class AuthProvider with ChangeNotifier {
   final _supabase = Supabase.instance.client;
   UserModel? _currentUser;
-  
+  bool _isOnboardingCompleted = false;
+
   UserModel? get currentUser => _currentUser;
   bool get isAuthenticated => _supabase.auth.currentSession != null;
+  bool get isOnboardingCompleted => _isOnboardingCompleted;
 
   AuthProvider() {
+    _loadOnboardingStatus();
     _init();
   }
 
+  Future<void> _loadOnboardingStatus() async {
+    final box = await Hive.openBox('settings');
+    _isOnboardingCompleted = box.get('onboarding_completed', defaultValue: false);
+    notifyListeners();
+  }
+
+  Future<void> completeOnboarding() async {
+    final box = await Hive.openBox('settings');
+    await box.put('onboarding_completed', true);
+    _isOnboardingCompleted = true;
+    notifyListeners();
+  }
+
   void _init() {
-    // Listen to auth changes
     _supabase.auth.onAuthStateChange.listen((data) {
       _refreshUser(data.session?.user);
     });
@@ -27,7 +44,7 @@ class AuthProvider with ChangeNotifier {
         username: user.userMetadata?['username'] ?? user.email?.split('@')[0] ?? 'User',
         email: user.email ?? '',
         password: '',
-        profileImagePath: user.userMetadata?['avatar_url'], // Ensure this is captured
+        profileImagePath: user.userMetadata?['avatar_url'],
       );
     } else {
       _currentUser = null;
@@ -43,6 +60,11 @@ class AuthProvider with ChangeNotifier {
         data: {'username': username},
       );
       _refreshUser(response.user);
+    } on AuthApiException catch (e) {
+      if (e.message.contains('User already registered') || e.code == 'user_already_exists') {
+        throw 'This email is already registered. Please log in instead.';
+      }
+      rethrow;
     } catch (e) {
       debugPrint('Registration Error: $e');
       rethrow;
@@ -78,16 +100,34 @@ class AuthProvider with ChangeNotifier {
 
   Future<void> updateUser(String newUsername, String newEmail, {String? profilePath}) async {
     try {
+      String? finalAvatarUrl = _currentUser?.profileImagePath;
+
+      if (profilePath != null) {
+        final userId = _supabase.auth.currentUser!.id;
+        final fileExtension = profilePath.split('.').last;
+        final fileName = '$userId.${DateTime.now().millisecondsSinceEpoch}.$fileExtension';
+        
+        if (!kIsWeb) {
+          final file = File(profilePath);
+          await _supabase.storage.from('avatars').upload(
+            fileName,
+            file,
+            fileOptions: const FileOptions(cacheControl: '3600', upsert: true),
+          );
+          finalAvatarUrl = _supabase.storage.from('avatars').getPublicUrl(fileName);
+        }
+      }
+
       final response = await _supabase.auth.updateUser(
         UserAttributes(
           email: newEmail,
           data: {
             'username': newUsername,
-            if (profilePath != null) 'avatar_url': profilePath,
+            if (finalAvatarUrl != null) 'avatar_url': finalAvatarUrl,
           },
         ),
       );
-      _refreshUser(response.user); // Immediately update local state with new info
+      _refreshUser(response.user);
     } catch (e) {
       debugPrint('Update User Error: $e');
     }

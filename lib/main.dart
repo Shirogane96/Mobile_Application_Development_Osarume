@@ -9,6 +9,7 @@ import 'providers/auth_provider.dart';
 import 'providers/theme_provider.dart';
 import 'screens/home_screen.dart';
 import 'screens/login_screen.dart';
+import 'screens/onboarding_screen.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -47,8 +48,11 @@ class MoodTrackApp extends StatelessWidget {
           theme: themeProvider.themeData,
           home: Consumer<AuthProvider>(
             builder: (context, auth, _) {
+              if (!auth.isOnboardingCompleted) {
+                return const OnboardingScreen();
+              }
+
               if (auth.isAuthenticated) {
-                // Ensure data is loaded for the new user
                 WidgetsBinding.instance.addPostFrameCallback((_) {
                   context.read<MoodProvider>().loadEntries();
                 });

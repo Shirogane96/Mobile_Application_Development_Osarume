@@ -53,6 +53,15 @@ class _HomeScreenState extends State<HomeScreen> {
       );
     }
 
+    ImageProvider imageProvider;
+    if (path.startsWith('http')) {
+      imageProvider = NetworkImage(path);
+    } else if (kIsWeb) {
+      imageProvider = NetworkImage(path);
+    } else {
+      imageProvider = FileImage(File(path));
+    }
+
     return Container(
       key: ValueKey(path),
       width: radius * 2,
@@ -61,7 +70,7 @@ class _HomeScreenState extends State<HomeScreen> {
         color: Theme.of(context).colorScheme.primaryContainer,
         shape: BoxShape.circle,
         image: DecorationImage(
-          image: kIsWeb ? NetworkImage(path) : FileImage(File(path)) as ImageProvider,
+          image: imageProvider,
           fit: BoxFit.cover,
         ),
       ),

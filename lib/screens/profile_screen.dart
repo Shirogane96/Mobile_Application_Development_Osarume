@@ -83,6 +83,15 @@ class _ProfileScreenState extends State<ProfileScreen> {
       );
     }
 
+    ImageProvider imageProvider;
+    if (path.startsWith('http')) {
+      imageProvider = NetworkImage(path);
+    } else if (kIsWeb) {
+      imageProvider = NetworkImage(path);
+    } else {
+      imageProvider = FileImage(File(path));
+    }
+
     return Container(
       key: ValueKey(path),
       width: radius * 2,
@@ -91,7 +100,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
         color: Theme.of(context).colorScheme.primary,
         shape: BoxShape.circle,
         image: DecorationImage(
-          image: kIsWeb ? NetworkImage(path) : FileImage(File(path)) as ImageProvider,
+          image: imageProvider,
           fit: BoxFit.cover,
         ),
       ),
