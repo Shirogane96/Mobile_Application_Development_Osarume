@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import 'package:provider/provider.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import 'models/mood_entry.dart';
 import 'models/user_model.dart';
 import 'providers/mood_provider.dart';
@@ -11,8 +12,12 @@ import 'screens/login_screen.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+
+  await Supabase.initialize(
+    url: 'https://fomizubnzkmndgmpzres.supabase.co',
+    anonKey: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZvbWl6dWJuemttbmRnbXB6cmVzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzY0NjgxMTgsImV4cCI6MjA5MjA0NDExOH0.0BsbCqMV9DzSVkE_ItB4tm3HIHz4U7Om5bbvgxbrmbc',
+  );
   
-  // Initialize Local Storage
   await Hive.initFlutter();
   Hive.registerAdapter(MoodEntryAdapter());
   Hive.registerAdapter(UserModelAdapter());
@@ -51,7 +56,6 @@ class MoodTrackApp extends StatelessWidget {
   }
 }
 
-// Manual Adapter for MoodEntry
 class MoodEntryAdapter extends TypeAdapter<MoodEntry> {
   @override
   final int typeId = 0;
@@ -85,7 +89,6 @@ class MoodEntryAdapter extends TypeAdapter<MoodEntry> {
   }
 }
 
-// Manual Adapter for UserModel
 class UserModelAdapter extends TypeAdapter<UserModel> {
   @override
   final int typeId = 1;

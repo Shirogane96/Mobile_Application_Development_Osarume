@@ -13,8 +13,7 @@ class _LoginScreenState extends State<LoginScreen> {
   bool _isLogin = true;
   final _formKey = GlobalKey<FormState>();
   
-  // Controllers
-  final _idController = TextEditingController(); // Username or Email
+  final _idController = TextEditingController();
   final _emailController = TextEditingController();
   final _userController = TextEditingController();
   final _passController = TextEditingController();
@@ -65,6 +64,18 @@ class _LoginScreenState extends State<LoginScreen> {
         return;
       }
       await auth.register(_userController.text, _emailController.text, _passController.text);
+    }
+  }
+
+  Future<void> _handleGoogleSignIn() async {
+    final auth = context.read<AuthProvider>();
+    final success = await auth.signInWithGoogle();
+    if (!success) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Google Sign-In failed. Please check your configuration.')),
+        );
+      }
     }
   }
 
@@ -156,7 +167,7 @@ class _LoginScreenState extends State<LoginScreen> {
                 const SizedBox(height: 20),
                 
                 OutlinedButton.icon(
-                  onPressed: () {}, // Google sign in logic placeholder
+                  onPressed: _handleGoogleSignIn,
                   icon: const Icon(Icons.g_mobiledata, size: 30),
                   label: const Text('Continue with Google'),
                   style: OutlinedButton.styleFrom(minimumSize: const Size(double.infinity, 50)),
