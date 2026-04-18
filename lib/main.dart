@@ -27,7 +27,7 @@ void main() async {
       providers: [
         ChangeNotifierProvider(create: (_) => AuthProvider()),
         ChangeNotifierProvider(create: (_) => ThemeProvider()),
-        ChangeNotifierProvider(create: (_) => MoodProvider()..loadEntries()),
+        ChangeNotifierProvider(create: (_) => MoodProvider()),
       ],
       child: const MoodTrackApp(),
     ),
@@ -47,7 +47,15 @@ class MoodTrackApp extends StatelessWidget {
           theme: themeProvider.themeData,
           home: Consumer<AuthProvider>(
             builder: (context, auth, _) {
-              return auth.isAuthenticated ? const HomeScreen() : const LoginScreen();
+              if (auth.isAuthenticated) {
+                // Ensure data is loaded for the new user
+                WidgetsBinding.instance.addPostFrameCallback((_) {
+                  context.read<MoodProvider>().loadEntries();
+                });
+                return const HomeScreen();
+              } else {
+                return const LoginScreen();
+              }
             },
           ),
         );

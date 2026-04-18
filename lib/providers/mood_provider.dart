@@ -8,11 +8,15 @@ import 'package:intl/intl.dart';
 import '../models/mood_entry.dart';
 
 class MoodProvider with ChangeNotifier {
-  static const String boxName = 'mood_entries';
   final _supabase = Supabase.instance.client;
   List<MoodEntry> _entries = [];
-
   List<MoodEntry> get entries => _entries;
+
+  // Use a user-specific box name for privacy
+  String get _boxName {
+    final userId = _supabase.auth.currentUser?.id ?? 'guest';
+    return 'mood_entries_$userId';
+  }
 
   final Map<String, Color> moodColors = {
     '😊': Colors.amber,
@@ -22,69 +26,79 @@ class MoodProvider with ChangeNotifier {
     '😴': Colors.purple,
   };
 
+  void clearData() {
+    _entries = [];
+    notifyListeners();
+  }
+
   Future<void> loadEntries() async {
-    // 1. Load from Local Hive first (for speed)
-    final box = await Hive.openBox<MoodEntry>(boxName);
+    final user = _supabase.auth.currentUser;
+    if (user == null) {
+      _entries = [];
+      notifyListeners();
+      return;
+    }
+
+    // 1. Load from User-Specific Local Hive first
+    final box = await Hive.openBox<MoodEntry>(_boxName);
     _entries = box.values.toList()..sort((a, b) => b.timestamp.compareTo(a.timestamp));
     notifyListeners();
 
-    // 2. Fetch from Supabase if logged in
-    final user = _supabase.auth.currentUser;
-    if (user != null) {
-      try {
-        final response = await _supabase
-            .from('mood_entries')
-            .select()
-            .eq('user_id', user.id)
-            .order('timestamp', ascending: false);
+    // 2. Fetch from Supabase and sync
+    try {
+      final response = await _supabase
+          .from('mood_entries')
+          .select()
+          .eq('user_id', user.id)
+          .order('timestamp', ascending: false);
 
-        final cloudEntries = (response as List).map((data) => MoodEntry(
-          emoji: data['emoji'],
-          note: data['note'] ?? '',
-          timestamp: DateTime.parse(data['timestamp']),
-          voiceNotePath: data['voice_note_path'],
-        )).toList();
+      final cloudEntries = (response as List).map((data) => MoodEntry(
+        emoji: data['emoji'],
+        note: data['note'] ?? '',
+        timestamp: DateTime.parse(data['timestamp']),
+        voiceNotePath: data['voice_note_path'],
+      )).toList();
 
-        // Sync local with cloud
-        await box.clear();
-        await box.addAll(cloudEntries);
-        _entries = cloudEntries;
-        notifyListeners();
-      } catch (e) {
-        debugPrint('Error fetching from cloud: $e');
-      }
+      // Sync local box with cloud data
+      await box.clear();
+      await box.addAll(cloudEntries);
+      _entries = cloudEntries;
+      notifyListeners();
+    } catch (e) {
+      debugPrint('Sync Error: $e');
     }
   }
 
   Future<void> addEntry(MoodEntry entry) async {
-    // Save locally
-    final box = await Hive.openBox<MoodEntry>(boxName);
+    final user = _supabase.auth.currentUser;
+    if (user == null) return;
+
+    // Save locally to user box
+    final box = await Hive.openBox<MoodEntry>(_boxName);
     await box.add(entry);
     _entries.insert(0, entry);
     notifyListeners();
 
     // Save to Supabase
-    final user = _supabase.auth.currentUser;
-    if (user != null) {
-      try {
-        await _supabase.from('mood_entries').insert({
-          'user_id': user.id,
-          'emoji': entry.emoji,
-          'note': entry.note,
-          'timestamp': entry.timestamp.toIso8601String(),
-          'voice_note_path': entry.voiceNotePath,
-        });
-      } catch (e) {
-        debugPrint('Error syncing to cloud: $e');
-      }
+    try {
+      await _supabase.from('mood_entries').insert({
+        'user_id': user.id,
+        'emoji': entry.emoji,
+        'note': entry.note,
+        'timestamp': entry.timestamp.toIso8601String(),
+        'voice_note_path': entry.voiceNotePath,
+      });
+    } catch (e) {
+      debugPrint('Cloud Save Error: $e');
     }
   }
 
   Future<void> updateEntry(int index, String newEmoji, String newNote) async {
-    final entry = _entries[index];
+    final user = _supabase.auth.currentUser;
+    if (user == null) return;
 
-    // Update locally
-    final box = await Hive.openBox<MoodEntry>(boxName);
+    final entry = _entries[index];
+    final box = await Hive.openBox<MoodEntry>(_boxName);
     final hiveKey = box.keyAt(box.values.toList().indexOf(entry));
 
     final updatedEntry = MoodEntry(
@@ -98,55 +112,48 @@ class MoodProvider with ChangeNotifier {
     _entries[index] = updatedEntry;
     notifyListeners();
 
-    // Update in Supabase
-    final user = _supabase.auth.currentUser;
-    if (user != null) {
-      try {
-        await _supabase
-            .from('mood_entries')
-            .update({'emoji': newEmoji, 'note': newNote})
-            .eq('user_id', user.id)
-            .eq('timestamp', entry.timestamp.toIso8601String());
-      } catch (e) {
-        debugPrint('Error updating cloud: $e');
-      }
+    try {
+      await _supabase
+          .from('mood_entries')
+          .update({'emoji': newEmoji, 'note': newNote})
+          .eq('user_id', user.id)
+          .eq('timestamp', entry.timestamp.toIso8601String());
+    } catch (e) {
+      debugPrint('Cloud Update Error: $e');
     }
   }
 
   Future<void> deleteEntry(int index) async {
-    final entry = _entries[index];
+    final user = _supabase.auth.currentUser;
+    if (user == null) return;
 
-    // Delete locally
-    final box = await Hive.openBox<MoodEntry>(boxName);
+    final entry = _entries[index];
+    final box = await Hive.openBox<MoodEntry>(_boxName);
     await box.deleteAt(index);
     _entries.removeAt(index);
     notifyListeners();
 
-    // Delete in Supabase
-    final user = _supabase.auth.currentUser;
-    if (user != null) {
-      try {
-        await _supabase
-            .from('mood_entries')
-            .delete()
-            .eq('user_id', user.id)
-            .eq('timestamp', entry.timestamp.toIso8601String());
-      } catch (e) {
-        debugPrint('Error deleting from cloud: $e');
-      }
+    try {
+      await _supabase
+          .from('mood_entries')
+          .delete()
+          .eq('user_id', user.id)
+          .eq('timestamp', entry.timestamp.toIso8601String());
+    } catch (e) {
+      debugPrint('Cloud Delete Error: $e');
     }
   }
 
   Future<void> deleteAllData() async {
-    final box = await Hive.openBox<MoodEntry>(boxName);
+    final user = _supabase.auth.currentUser;
+    if (user == null) return;
+
+    final box = await Hive.openBox<MoodEntry>(_boxName);
     await box.clear();
-    _entries.clear();
+    _entries = [];
     notifyListeners();
 
-    final user = _supabase.auth.currentUser;
-    if (user != null) {
-      await _supabase.from('mood_entries').delete().eq('user_id', user.id);
-    }
+    await _supabase.from('mood_entries').delete().eq('user_id', user.id);
   }
 
   Future<void> exportToPdf() async {

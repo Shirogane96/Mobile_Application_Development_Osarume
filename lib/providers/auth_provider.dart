@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:supabase_flutter/supabase_flutter.dart';
-import 'package:google_sign_in/google_sign_in.dart';
 import '../models/user_model.dart';
 
 class AuthProvider with ChangeNotifier {
@@ -15,30 +15,34 @@ class AuthProvider with ChangeNotifier {
   }
 
   void _init() {
-    // Listen to auth changes (sign in, sign out, etc.)
+    // Listen to auth changes
     _supabase.auth.onAuthStateChange.listen((data) {
-      final user = data.session?.user;
-      if (user != null) {
-        _currentUser = UserModel(
-          username: user.userMetadata?['username'] ?? user.email?.split('@')[0] ?? 'User',
-          email: user.email ?? '',
-          password: '', // Password isn't stored locally for Supabase users
-          profileImagePath: user.userMetadata?['avatar_url'],
-        );
-      } else {
-        _currentUser = null;
-      }
-      notifyListeners();
+      _refreshUser(data.session?.user);
     });
+  }
+
+  void _refreshUser(User? user) {
+    if (user != null) {
+      _currentUser = UserModel(
+        username: user.userMetadata?['username'] ?? user.email?.split('@')[0] ?? 'User',
+        email: user.email ?? '',
+        password: '',
+        profileImagePath: user.userMetadata?['avatar_url'], // Ensure this is captured
+      );
+    } else {
+      _currentUser = null;
+    }
+    notifyListeners();
   }
 
   Future<void> register(String username, String email, String password) async {
     try {
-      await _supabase.auth.signUp(
+      final response = await _supabase.auth.signUp(
         email: email,
         password: password,
         data: {'username': username},
       );
+      _refreshUser(response.user);
     } catch (e) {
       debugPrint('Registration Error: $e');
       rethrow;
@@ -47,11 +51,11 @@ class AuthProvider with ChangeNotifier {
 
   Future<bool> login(String identifier, String password) async {
     try {
-      // Supabase normally uses email for login
-      await _supabase.auth.signInWithPassword(
+      final response = await _supabase.auth.signInWithPassword(
         email: identifier,
         password: password,
       );
+      _refreshUser(response.user);
       return true;
     } catch (e) {
       debugPrint('Login Error: $e');
@@ -61,10 +65,9 @@ class AuthProvider with ChangeNotifier {
 
   Future<bool> signInWithGoogle() async {
     try {
-      // For Web, Supabase handles the redirect automatically
       await _supabase.auth.signInWithOAuth(
         OAuthProvider.google,
-        redirectTo: 'http://localhost:55177', // Match your locked port
+        redirectTo: kIsWeb ? 'http://localhost:55177' : 'io.supabase.emojitrack://login-callback',
       );
       return true;
     } catch (e) {
@@ -75,7 +78,7 @@ class AuthProvider with ChangeNotifier {
 
   Future<void> updateUser(String newUsername, String newEmail, {String? profilePath}) async {
     try {
-      await _supabase.auth.updateUser(
+      final response = await _supabase.auth.updateUser(
         UserAttributes(
           email: newEmail,
           data: {
@@ -84,14 +87,19 @@ class AuthProvider with ChangeNotifier {
           },
         ),
       );
+      _refreshUser(response.user); // Immediately update local state with new info
     } catch (e) {
       debugPrint('Update User Error: $e');
     }
   }
 
   Future<void> logout() async {
-    await _supabase.auth.signOut();
-    _currentUser = null;
-    notifyListeners();
+    try {
+      await _supabase.auth.signOut();
+      _currentUser = null;
+      notifyListeners();
+    } catch (e) {
+      debugPrint('Logout Error: $e');
+    }
   }
 }
