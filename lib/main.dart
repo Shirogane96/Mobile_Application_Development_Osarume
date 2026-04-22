@@ -7,6 +7,7 @@ import 'models/user_model.dart';
 import 'providers/mood_provider.dart';
 import 'providers/auth_provider.dart';
 import 'providers/theme_provider.dart';
+import 'providers/security_provider.dart';
 import 'screens/home_screen.dart';
 import 'screens/login_screen.dart';
 import 'screens/onboarding_screen.dart';
@@ -29,6 +30,7 @@ void main() async {
         ChangeNotifierProvider(create: (_) => AuthProvider()),
         ChangeNotifierProvider(create: (_) => ThemeProvider()),
         ChangeNotifierProvider(create: (_) => MoodProvider()),
+        ChangeNotifierProvider(create: (_) => SecurityProvider()),
       ],
       child: const MoodTrackApp(),
     ),
@@ -40,31 +42,93 @@ class MoodTrackApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Consumer<ThemeProvider>(
-      builder: (context, themeProvider, _) {
+    return Consumer2<ThemeProvider, SecurityProvider>(
+      builder: (context, themeProvider, securityProvider, _) {
         return MaterialApp(
           title: 'EmojiTrack',
           debugShowCheckedModeBanner: false,
           theme: themeProvider.themeData,
-          home: Consumer<AuthProvider>(
-            builder: (context, auth, _) {
-              if (!auth.isOnboardingCompleted) {
-                return const OnboardingScreen();
-              }
-
-              if (auth.isAuthenticated) {
-                WidgetsBinding.instance.addPostFrameCallback((_) {
-                  context.read<MoodProvider>().loadEntries();
-                });
-                return const HomeScreen();
-              } else {
-                return const LoginScreen();
-              }
-            },
-          ),
+          home: _AppGate(),
         );
       },
     );
+  }
+}
+
+class _AppGate extends StatefulWidget {
+  @override
+  State<_AppGate> createState() => _AppGateState();
+}
+
+class _AppGateState extends State<_AppGate> with WidgetsBindingObserver {
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addObserver(this);
+    _checkSecurity();
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.paused) {
+      context.read<SecurityProvider>().lock();
+    } else if (state == AppLifecycleState.resumed) {
+      _checkSecurity();
+    }
+  }
+
+  void _checkSecurity() {
+    final security = context.read<SecurityProvider>();
+    if (security.isLockEnabled && !security.isAuthenticated) {
+      security.authenticate();
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final security = context.watch<SecurityProvider>();
+    final auth = context.watch<AuthProvider>();
+
+    // If lock is enabled and not authenticated, show a simple lock screen
+    if (security.isLockEnabled && !security.isAuthenticated) {
+      return Scaffold(
+        body: Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              const Icon(Icons.lock_outline, size: 80, color: Colors.teal),
+              const SizedBox(height: 20),
+              const Text('App Locked', style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold)),
+              const SizedBox(height: 40),
+              ElevatedButton.icon(
+                onPressed: () => security.authenticate(),
+                icon: const Icon(Icons.fingerprint),
+                label: const Text('Unlock with Biometrics'),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
+    if (!auth.isOnboardingCompleted) {
+      return const OnboardingScreen();
+    }
+    
+    if (auth.isAuthenticated) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        context.read<MoodProvider>().loadEntries();
+      });
+      return const HomeScreen();
+    } else {
+      return const LoginScreen();
+    }
   }
 }
 

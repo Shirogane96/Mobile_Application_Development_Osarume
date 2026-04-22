@@ -116,41 +116,45 @@ class _ProfileScreenState extends State<ProfileScreen> {
       appBar: AppBar(
         title: const Text('Profile'),
         centerTitle: true,
-        actions: [
-          IconButton(
-            icon: Icon(_isEditing ? Icons.check : Icons.edit),
-            onPressed: () async {
-              if (_isEditing) {
-                await auth.updateUser(_userController.text, _emailController.text);
-                if (mounted) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('Profile updated!')),
-                  );
-                }
-              }
-              setState(() => _isEditing = !_isEditing);
-            },
-          ),
-        ],
       ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(24.0),
         child: Column(
           children: [
-            Stack(
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                _buildAvatar(user?.profileImagePath, 60, 40),
-                Positioned(
-                  bottom: 0,
-                  right: 0,
-                  child: CircleAvatar(
-                    backgroundColor: Theme.of(context).colorScheme.secondary,
-                    radius: 20,
-                    child: IconButton(
-                      icon: const Icon(Icons.camera_alt, size: 20, color: Colors.white),
-                      onPressed: _pickImage,
+                const SizedBox(width: 48), // Spacer for centering
+                Stack(
+                  children: [
+                    _buildAvatar(user?.profileImagePath, 60, 40),
+                    Positioned(
+                      bottom: 0,
+                      right: 0,
+                      child: CircleAvatar(
+                        backgroundColor: Theme.of(context).colorScheme.secondary,
+                        radius: 20,
+                        child: IconButton(
+                          icon: const Icon(Icons.camera_alt, size: 20, color: Colors.white),
+                          onPressed: _pickImage,
+                        ),
+                      ),
                     ),
-                  ),
+                  ],
+                ),
+                IconButton(
+                  icon: Icon(_isEditing ? Icons.check : Icons.edit),
+                  onPressed: () async {
+                    if (_isEditing) {
+                      await auth.updateUser(_userController.text, _emailController.text);
+                      if (mounted) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(content: Text('Profile updated!')),
+                        );
+                      }
+                    }
+                    setState(() => _isEditing = !_isEditing);
+                  },
                 ),
               ],
             ),
@@ -180,8 +184,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
             Card(
               child: ListTile(
                 leading: const Icon(Icons.palette_outlined),
-                title: const Text('Appearance'),
-                subtitle: const Text('Change app theme and colors'),
+                title: const Text('Appearance & Security'),
+                subtitle: const Text('Change app theme and privacy settings'),
                 trailing: const Icon(Icons.chevron_right),
                 onTap: () => Navigator.push(
                   context,
@@ -197,7 +201,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
               child: ElevatedButton.icon(
                 onPressed: () {
                   auth.logout();
-                  Navigator.pop(context);
                 },
                 icon: const Icon(Icons.logout),
                 label: const Text('Logout'),
