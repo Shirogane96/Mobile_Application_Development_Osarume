@@ -15,10 +15,13 @@ class HistoryScreen extends StatefulWidget {
 class _HistoryScreenState extends State<HistoryScreen> {
   final AudioPlayer _audioPlayer = AudioPlayer();
   int? _playingIndex;
+  String _searchQuery = '';
+  final TextEditingController _searchController = TextEditingController();
 
   @override
   void dispose() {
     _audioPlayer.dispose();
+    _searchController.dispose();
     super.dispose();
   }
 
@@ -40,8 +43,8 @@ class _HistoryScreenState extends State<HistoryScreen> {
     }
   }
 
-  void _showEditDialog(BuildContext context, MoodProvider provider, int index) {
-    final entry = provider.entries[index];
+  void _showEditDialog(BuildContext context, MoodProvider provider, int originalIndex) {
+    final entry = provider.entries[originalIndex];
     final noteController = TextEditingController(text: entry.note);
     String selectedEmoji = entry.emoji;
 
@@ -84,7 +87,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
             TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancel')),
             ElevatedButton(
               onPressed: () {
-                provider.updateEntry(index, selectedEmoji, noteController.text);
+                provider.updateEntry(originalIndex, selectedEmoji, noteController.text);
                 Navigator.pop(context);
               },
               child: const Text('Save'),
@@ -99,48 +102,87 @@ class _HistoryScreenState extends State<HistoryScreen> {
   Widget build(BuildContext context) {
     return Consumer<MoodProvider>(
       builder: (context, moodProvider, child) {
-        final entries = moodProvider.entries;
+        final allEntries = moodProvider.entries;
 
-        if (entries.isEmpty) {
+        if (allEntries.isEmpty) {
           return const Center(child: Text('No mood entries yet.'));
         }
 
-        return ListView.builder(
-          itemCount: entries.length,
-          itemBuilder: (context, index) {
-            final entry = entries[index];
-            final hasVoice = entry.voiceNotePath != null && entry.voiceNotePath!.isNotEmpty;
+        // Filtering logic
+        final filteredEntries = allEntries.where((entry) {
+          final noteMatch = entry.note.toLowerCase().contains(_searchQuery.toLowerCase());
+          final emojiMatch = entry.emoji.contains(_searchQuery);
+          return noteMatch || emojiMatch;
+        }).toList();
 
-            return ListTile(
-              leading: Text(entry.emoji, style: const TextStyle(fontSize: 30)),
-              title: Text(entry.note.isEmpty ? 'No note' : entry.note),
-              subtitle: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(DateFormat('MMM dd, yyyy - hh:mm a').format(entry.timestamp)),
-                  if (hasVoice)
-                    TextButton.icon(
-                      icon: Icon(_playingIndex == index ? Icons.stop : Icons.play_arrow),
-                      label: Text(_playingIndex == index ? 'Stop' : 'Play Voice Note'),
-                      onPressed: () => _playVoiceNote(entry.voiceNotePath!, index),
-                    ),
-                ],
+        return Column(
+          children: [
+            Padding(
+              padding: const EdgeInsets.all(16.0),
+              child: TextField(
+                controller: _searchController,
+                decoration: InputDecoration(
+                  hintText: 'Search by note or emoji...',
+                  prefixIcon: const Icon(Icons.search),
+                  suffixIcon: _searchQuery.isNotEmpty 
+                      ? IconButton(
+                          icon: const Icon(Icons.clear),
+                          onPressed: () {
+                            _searchController.clear();
+                            setState(() => _searchQuery = '');
+                          },
+                        ) 
+                      : null,
+                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                  contentPadding: const EdgeInsets.symmetric(horizontal: 16),
+                ),
+                onChanged: (value) => setState(() => _searchQuery = value),
               ),
-              trailing: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  IconButton(
-                    icon: const Icon(Icons.edit_outlined, color: Colors.blue),
-                    onPressed: () => _showEditDialog(context, moodProvider, index),
+            ),
+            Expanded(
+              child: filteredEntries.isEmpty
+                ? const Center(child: Text('No matching reflections found.'))
+                : ListView.builder(
+                    itemCount: filteredEntries.length,
+                    itemBuilder: (context, index) {
+                      final entry = filteredEntries[index];
+                      // Find the original index for editing/deleting accurately
+                      final originalIndex = allEntries.indexOf(entry);
+                      final hasVoice = entry.voiceNotePath != null && entry.voiceNotePath!.isNotEmpty;
+
+                      return ListTile(
+                        leading: Text(entry.emoji, style: const TextStyle(fontSize: 30)),
+                        title: Text(entry.note.isEmpty ? 'No note' : entry.note),
+                        subtitle: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(DateFormat('MMM dd, yyyy - hh:mm a').format(entry.timestamp)),
+                            if (hasVoice)
+                              TextButton.icon(
+                                icon: Icon(_playingIndex == originalIndex ? Icons.stop : Icons.play_arrow),
+                                label: Text(_playingIndex == originalIndex ? 'Stop' : 'Play Voice Note'),
+                                onPressed: () => _playVoiceNote(entry.voiceNotePath!, originalIndex),
+                              ),
+                          ],
+                        ),
+                        trailing: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            IconButton(
+                              icon: const Icon(Icons.edit_outlined, color: Colors.blue),
+                              onPressed: () => _showEditDialog(context, moodProvider, originalIndex),
+                            ),
+                            IconButton(
+                              icon: const Icon(Icons.delete_outline, color: Colors.red),
+                              onPressed: () => moodProvider.deleteEntry(originalIndex),
+                            ),
+                          ],
+                        ),
+                      );
+                    },
                   ),
-                  IconButton(
-                    icon: const Icon(Icons.delete_outline, color: Colors.red),
-                    onPressed: () => moodProvider.deleteEntry(index),
-                  ),
-                ],
-              ),
-            );
-          },
+            ),
+          ],
         );
       },
     );
