@@ -80,11 +80,24 @@ class _HomeScreenState extends State<HomeScreen> {
   @override
   Widget build(BuildContext context) {
     final user = context.watch<AuthProvider>().currentUser;
+    final moodProvider = context.watch<MoodProvider>();
+    final streak = moodProvider.currentStreak;
 
     return Scaffold(
       appBar: AppBar(
         title: const Text('EmojiTrack'),
         actions: [
+          // Streak Display
+          if (streak > 0)
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 8.0),
+              child: Chip(
+                avatar: const Icon(Icons.local_fire_department, color: Colors.orange, size: 20),
+                label: Text('$streak Day Streak!', style: const TextStyle(fontWeight: FontWeight.bold)),
+                backgroundColor: Colors.orange[50],
+                side: BorderSide.none,
+              ),
+            ),
           GestureDetector(
             onTap: () => Navigator.push(
               context,

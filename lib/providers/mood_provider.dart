@@ -12,6 +12,38 @@ class MoodProvider with ChangeNotifier {
   List<MoodEntry> _entries = [];
   List<MoodEntry> get entries => _entries;
 
+  // Streak logic
+  int get currentStreak {
+    if (_entries.isEmpty) return 0;
+
+    // Sort entries by date (newest first)
+    final sortedEntries = List<MoodEntry>.from(_entries)
+      ..sort((a, b) => b.timestamp.compareTo(a.timestamp));
+
+    int streak = 0;
+    DateTime today = DateTime.now();
+    DateTime lastDate = DateTime(today.year, today.month, today.day);
+
+    // Check if the user has logged today or yesterday to continue streak
+    bool foundToday = false;
+    for (var entry in sortedEntries) {
+      DateTime entryDate = DateTime(entry.timestamp.year, entry.timestamp.month, entry.timestamp.day);
+
+      if (entryDate == lastDate) {
+        if (!foundToday) {
+          streak++;
+          foundToday = true;
+        }
+      } else if (entryDate == lastDate.subtract(const Duration(days: 1))) {
+        streak++;
+        lastDate = entryDate;
+      } else if (entryDate.isBefore(lastDate.subtract(const Duration(days: 1)))) {
+        break;
+      }
+    }
+    return streak;
+  }
+
   // Use a user-specific box name for privacy
   String get _boxName {
     final userId = _supabase.auth.currentUser?.id ?? 'guest';
@@ -39,12 +71,10 @@ class MoodProvider with ChangeNotifier {
       return;
     }
 
-    // 1. Load from User-Specific Local Hive first
     final box = await Hive.openBox<MoodEntry>(_boxName);
     _entries = box.values.toList()..sort((a, b) => b.timestamp.compareTo(a.timestamp));
     notifyListeners();
 
-    // 2. Fetch from Supabase and sync
     try {
       final response = await _supabase
           .from('mood_entries')
@@ -59,7 +89,6 @@ class MoodProvider with ChangeNotifier {
         voiceNotePath: data['voice_note_path'],
       )).toList();
 
-      // Sync local box with cloud data
       await box.clear();
       await box.addAll(cloudEntries);
       _entries = cloudEntries;
@@ -73,13 +102,11 @@ class MoodProvider with ChangeNotifier {
     final user = _supabase.auth.currentUser;
     if (user == null) return;
 
-    // Save locally to user box
     final box = await Hive.openBox<MoodEntry>(_boxName);
     await box.add(entry);
     _entries.insert(0, entry);
     notifyListeners();
 
-    // Save to Supabase
     try {
       await _supabase.from('mood_entries').insert({
         'user_id': user.id,
