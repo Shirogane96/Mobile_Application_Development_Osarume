@@ -15,8 +15,7 @@ class MoodProvider with ChangeNotifier {
   // Streak logic
   int get currentStreak {
     if (_entries.isEmpty) return 0;
-
-    // Sort entries by date (newest first)
+    
     final sortedEntries = List<MoodEntry>.from(_entries)
       ..sort((a, b) => b.timestamp.compareTo(a.timestamp));
 
@@ -24,11 +23,10 @@ class MoodProvider with ChangeNotifier {
     DateTime today = DateTime.now();
     DateTime lastDate = DateTime(today.year, today.month, today.day);
 
-    // Check if the user has logged today or yesterday to continue streak
     bool foundToday = false;
     for (var entry in sortedEntries) {
       DateTime entryDate = DateTime(entry.timestamp.year, entry.timestamp.month, entry.timestamp.day);
-
+      
       if (entryDate == lastDate) {
         if (!foundToday) {
           streak++;
@@ -44,7 +42,36 @@ class MoodProvider with ChangeNotifier {
     return streak;
   }
 
-  // Use a user-specific box name for privacy
+  // Smart Insights Logic
+  String get getSmartInsight {
+    if (_entries.isEmpty) return "Start logging your mood to see insights!";
+    
+    final last7Days = _entries.where((e) => e.timestamp.isAfter(DateTime.now().subtract(const Duration(days: 7))));
+    if (last7Days.isEmpty) return "Log your mood more often to see your weekly patterns.";
+
+    final Map<String, int> counts = {};
+    for (var e in last7Days) {
+      counts[e.emoji] = (counts[e.emoji] ?? 0) + 1;
+    }
+
+    final topMood = counts.entries.reduce((a, b) => a.value > b.value ? a : b).key;
+
+    switch (topMood) {
+      case '😊':
+        return "You've been mostly happy this week! Keep doing what you're doing. Try to note down what triggered these good vibes.";
+      case '😐':
+        return "You're feeling neutral quite often. Maybe it's time for a small change or a new hobby to spice things up?";
+      case '😔':
+        return "You've been feeling down lately. Remember to reach out to a friend or take some time for self-care.";
+      case '😡':
+        return "You've logged anger multiple times. Try a 5-minute breathing exercise when you feel the tension rising.";
+      case '😴':
+        return "You've been feeling tired frequently. Are you getting enough sleep? A consistent sleep schedule can really help.";
+      default:
+        return "Tracking your moods is the first step to understanding your wellbeing. Great job on the consistency!";
+    }
+  }
+
   String get _boxName {
     final userId = _supabase.auth.currentUser?.id ?? 'guest';
     return 'mood_entries_$userId';
@@ -127,7 +154,7 @@ class MoodProvider with ChangeNotifier {
     final entry = _entries[index];
     final box = await Hive.openBox<MoodEntry>(_boxName);
     final hiveKey = box.keyAt(box.values.toList().indexOf(entry));
-
+    
     final updatedEntry = MoodEntry(
       emoji: newEmoji,
       note: newNote,

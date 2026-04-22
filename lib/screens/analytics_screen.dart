@@ -23,6 +23,8 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
           return const Center(child: Text('Not enough data for analytics yet.'));
         }
 
+        final insight = moodProvider.getSmartInsight;
+
         return SingleChildScrollView(
           padding: const EdgeInsets.all(16.0),
           child: Column(
@@ -59,6 +61,33 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
                 ),
                 child: _buildSelectedChart(moodProvider),
               ),
+              
+              const SizedBox(height: 30),
+              const Text(
+                'Personalized Assistant Insights',
+                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+              ),
+              const SizedBox(height: 10),
+              Card(
+                color: Theme.of(context).colorScheme.secondaryContainer.withOpacity(0.3),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                child: Padding(
+                  padding: const EdgeInsets.all(20.0),
+                  child: Row(
+                    children: [
+                      const Icon(Icons.auto_awesome, color: Colors.amber, size: 30),
+                      const SizedBox(width: 15),
+                      Expanded(
+                        child: Text(
+                          insight,
+                          style: const TextStyle(fontSize: 16, height: 1.4),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+
               const SizedBox(height: 30),
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -80,6 +109,7 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
                   onTap: () => _showDeleteDialog(context, moodProvider),
                 ),
               ),
+              const SizedBox(height: 20),
             ],
           ),
         );
