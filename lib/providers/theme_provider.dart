@@ -32,25 +32,42 @@ class ThemeProvider with ChangeNotifier {
     switch (_currentTheme) {
       case AppTheme.dark:
         return ThemeData.dark(useMaterial3: true).copyWith(
-          colorScheme: ColorScheme.fromSeed(seedColor: Colors.teal, brightness: Brightness.dark),
+          colorScheme: ColorScheme.fromSeed(
+            seedColor: const Color(0xFF5C6BC0), // Indigo
+            brightness: Brightness.dark,
+          ),
         );
       case AppTheme.lightFilter:
         return ThemeData(
           useMaterial3: true,
-          colorScheme: ColorScheme.fromSeed(seedColor: Colors.orange, brightness: Brightness.light),
-          scaffoldBackgroundColor: const Color(0xFFFFF9E6), // Sepia-like
+          colorScheme: ColorScheme.fromSeed(
+            seedColor: const Color(0xFF5C6BC0), // Indigo
+            primary: const Color(0xFF5C6BC0),
+            secondary: const Color(0xFFF06292), // Pink
+            brightness: Brightness.light,
+          ),
+          scaffoldBackgroundColor: const Color(0xFFFFF9E6),
         );
       case AppTheme.pink:
         return ThemeData(
           useMaterial3: true,
-          colorScheme: ColorScheme.fromSeed(seedColor: Colors.pinkAccent, brightness: Brightness.light),
-          scaffoldBackgroundColor: const Color(0xFFFFE6F2),
+          colorScheme: ColorScheme.fromSeed(
+            seedColor: const Color(0xFFF06292), // Pink
+            primary: const Color(0xFFF06292),
+            secondary: const Color(0xFF5C6BC0), // Indigo
+            brightness: Brightness.light,
+          ),
+          scaffoldBackgroundColor: const Color(0xFFFCE4EC),
         );
       case AppTheme.light:
       default:
         return ThemeData(
           useMaterial3: true,
-          colorScheme: ColorScheme.fromSeed(seedColor: Colors.teal),
+          colorScheme: ColorScheme.fromSeed(
+            seedColor: const Color(0xFF5C6BC0), // Indigo as default primary
+            primary: const Color(0xFF5C6BC0),
+            secondary: const Color(0xFFF06292), // Pink
+          ),
         );
     }
   }

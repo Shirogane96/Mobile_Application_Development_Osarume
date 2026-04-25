@@ -47,10 +47,12 @@ class _HomeScreenState extends State<HomeScreen> {
           currentIndex: _currentIndex,
           elevation: 0,
           onTap: (index) => setState(() => _currentIndex = index),
+          selectedItemColor: const Color(0xFF5C6BC0), // Indigo
+          unselectedItemColor: Colors.grey,
           items: const [
-            BottomNavigationBarItem(icon: Icon(Icons.add_reaction), label: 'Home'),
-            BottomNavigationBarItem(icon: Icon(Icons.history), label: 'History'),
-            BottomNavigationBarItem(icon: Icon(Icons.bar_chart), label: 'Trends'),
+            BottomNavigationBarItem(icon: Icon(Icons.home_rounded), label: 'Home'),
+            BottomNavigationBarItem(icon: Icon(Icons.history_rounded), label: 'History'),
+            BottomNavigationBarItem(icon: Icon(Icons.bar_chart_rounded), label: 'Trends'),
           ],
         ),
       ),
@@ -91,39 +93,25 @@ class _MoodSelectorBodyState extends State<MoodSelectorBody> {
     return 'Good Evening,';
   }
 
-  Widget _buildAvatar(String? path, double radius, double fontSize) {
+  Widget _buildAvatar(String? path, double radius) {
     final user = context.read<AuthProvider>().currentUser;
     final initial = user?.username.isNotEmpty == true ? user!.username[0].toUpperCase() : '?';
 
-    if (path == null || path.isEmpty) {
-      return CircleAvatar(
-        radius: radius,
-        backgroundColor: Theme.of(context).colorScheme.primaryContainer,
-        child: Text(
-          initial,
-          style: TextStyle(
-            fontSize: fontSize,
-            color: Theme.of(context).colorScheme.onPrimaryContainer,
-            fontWeight: FontWeight.bold,
-          ),
-        ),
-      );
-    }
-
-    ImageProvider imageProvider;
-    if (path.startsWith('http')) {
-      imageProvider = NetworkImage(path);
-    } else if (kIsWeb) {
-      imageProvider = NetworkImage(path);
-    } else {
-      imageProvider = FileImage(File(path));
-    }
-
-    return CircleAvatar(
-      key: ValueKey(path),
-      radius: radius,
-      backgroundColor: Colors.transparent,
-      backgroundImage: imageProvider,
+    return Container(
+      width: radius * 2,
+      height: radius * 2,
+      decoration: BoxDecoration(
+        color: const Color(0xFFE8EAF6), // Soft Indigo background
+        shape: BoxShape.circle,
+        border: Border.all(color: const Color(0xFF5C6BC0).withOpacity(0.2), width: 2),
+      ),
+      child: ClipOval(
+        child: path != null && path.isNotEmpty
+            ? (path.startsWith('http') || kIsWeb
+                ? Image.network(path, fit: BoxFit.cover, errorBuilder: (c, e, s) => Center(child: Text(initial, style: const TextStyle(fontWeight: FontWeight.bold, color: Color(0xFF5C6BC0)))))
+                : Image.file(File(path), fit: BoxFit.cover, errorBuilder: (c, e, s) => Center(child: Text(initial, style: const TextStyle(fontWeight: FontWeight.bold, color: Color(0xFF5C6BC0))))))
+            : Center(child: Text(initial, style: const TextStyle(fontWeight: FontWeight.bold, color: Color(0xFF5C6BC0), fontSize: 18))),
+      ),
     );
   }
 
@@ -138,7 +126,6 @@ class _MoodSelectorBodyState extends State<MoodSelectorBody> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Header Section
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
@@ -147,73 +134,66 @@ class _MoodSelectorBodyState extends State<MoodSelectorBody> {
                 children: [
                   Text(_getGreeting(), style: const TextStyle(fontSize: 16, color: Colors.grey)),
                   Text('Hello, ${user?.username ?? 'User'} 👋', 
-                    style: const TextStyle(fontSize: 28, fontWeight: FontWeight.bold)),
+                    style: const TextStyle(fontSize: 28, fontWeight: FontWeight.bold, color: Color(0xFF5C6BC0))),
                 ],
               ),
               GestureDetector(
                 onTap: () => Navigator.push(context, MaterialPageRoute(builder: (context) => const ProfileScreen())),
-                child: _buildAvatar(user?.profileImagePath, 30, 20),
+                child: _buildAvatar(user?.profileImagePath, 28),
               ),
             ],
           ),
           const SizedBox(height: 30),
 
-          // Daily Insight Card - Now themed
+          // Daily Insight Card - Now Perfectly Themed (Indigo/Pink Gradient feel)
           Container(
             width: double.infinity,
-            padding: const EdgeInsets.all(20),
+            padding: const EdgeInsets.all(24),
             decoration: BoxDecoration(
-              color: Theme.of(context).colorScheme.primary,
+              gradient: const LinearGradient(
+                colors: [Color(0xFF5C6BC0), Color(0xFF7986CB)],
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+              ),
               borderRadius: BorderRadius.circular(24),
+              boxShadow: [BoxShadow(color: const Color(0xFF5C6BC0).withOpacity(0.3), blurRadius: 15, offset: const Offset(0, 8))],
             ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Row(
                   children: [
-                    Icon(Icons.lightbulb_outline, color: Theme.of(context).colorScheme.onPrimary.withOpacity(0.8), size: 20),
+                    const Icon(Icons.auto_awesome, color: Color(0xFFFCE4EC), size: 20),
                     const SizedBox(width: 8),
-                    Text('DAILY INSIGHT', style: TextStyle(color: Theme.of(context).colorScheme.onPrimary.withOpacity(0.8), letterSpacing: 1.2, fontWeight: FontWeight.bold)),
+                    Text('DAILY INSIGHT', style: TextStyle(color: Colors.white.withOpacity(0.9), letterSpacing: 1.2, fontWeight: FontWeight.bold, fontSize: 12)),
                   ],
                 ),
                 const SizedBox(height: 12),
                 Text(
                   moodProvider.getSmartInsight,
-                  style: TextStyle(color: Theme.of(context).colorScheme.onPrimary, fontSize: 18, fontWeight: FontWeight.w500),
+                  style: const TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.w500, height: 1.4),
                 ),
               ],
             ),
           ),
           const SizedBox(height: 25),
 
-          // Grid Section
           Row(
             children: [
               Expanded(
-                child: _buildSmallCard(
-                  'Mood Streak', 
-                  '$streak Days', 
-                  Icons.local_fire_department, 
-                  Colors.orange
-                ),
+                child: _buildSmallCard('Mood Streak', '$streak Days', Icons.local_fire_department, Colors.orange),
               ),
               const SizedBox(width: 15),
               Expanded(
-                child: _buildSmallCard(
-                  'Total Logs', 
-                  '${moodProvider.entries.length}', 
-                  Icons.assignment_outlined, 
-                  Colors.blue
-                ),
+                child: _buildSmallCard('Total Logs', '${moodProvider.entries.length}', Icons.assignment_rounded, const Color(0xFF5C6BC0)),
               ),
             ],
           ),
           const SizedBox(height: 30),
 
-          const Text('How are you right now?', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
+          const Text('How are you right now?', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Colors.black87)),
           const SizedBox(height: 20),
 
-          // Emojis as Rounded Boxes
           GridView.builder(
             shrinkWrap: true,
             physics: const NeverScrollableScrollPhysics(),
@@ -228,18 +208,19 @@ class _MoodSelectorBodyState extends State<MoodSelectorBody> {
               final mood = moods[index];
               return InkWell(
                 onTap: () => _showNoteDialog(context, mood['emoji']!),
+                borderRadius: BorderRadius.circular(20),
                 child: Container(
                   decoration: BoxDecoration(
-                    color: Theme.of(context).cardColor,
+                    color: Colors.white,
                     borderRadius: BorderRadius.circular(20),
-                    boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.03), blurRadius: 10)],
+                    boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.04), blurRadius: 10, offset: const Offset(0, 4))],
                   ),
                   child: Column(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
                       Text(mood['emoji']!, style: const TextStyle(fontSize: 40)),
                       const SizedBox(height: 8),
-                      Text(mood['label']!, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
+                      Text(mood['label']!, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14, color: Color(0xFF5C6BC0))),
                     ],
                   ),
                 ),
@@ -253,19 +234,20 @@ class _MoodSelectorBodyState extends State<MoodSelectorBody> {
 
   Widget _buildSmallCard(String title, String value, IconData icon, Color color) {
     return Container(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: Theme.of(context).cardColor,
-        borderRadius: BorderRadius.circular(20),
-        boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.03), blurRadius: 10)],
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(24),
+        boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.03), blurRadius: 10, offset: const Offset(0, 4))],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Icon(icon, color: color, size: 28),
+          Icon(icon, color: color, size: 32),
           const SizedBox(height: 12),
-          Text(title, style: const TextStyle(fontSize: 14, color: Colors.grey)),
-          Text(value, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+          Text(title, style: const TextStyle(fontSize: 13, color: Colors.grey, fontWeight: FontWeight.w500)),
+          const SizedBox(height: 4),
+          Text(value, style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Colors.black87)),
         ],
       ),
     );
@@ -279,27 +261,32 @@ class _MoodSelectorBodyState extends State<MoodSelectorBody> {
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
-      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(30))),
+      backgroundColor: Colors.transparent,
       builder: (context) => StatefulBuilder(
-        builder: (context, setModalState) => Padding(
+        builder: (context, setModalState) => Container(
+          decoration: const BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.vertical(top: Radius.circular(32)),
+          ),
           padding: EdgeInsets.only(
-            bottom: MediaQuery.of(context).viewInsets.bottom,
+            bottom: MediaQuery.of(context).viewInsets.bottom + 24,
             left: 24, right: 24, top: 24,
           ),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
               Container(width: 40, height: 4, decoration: BoxDecoration(color: Colors.grey[300], borderRadius: BorderRadius.circular(2))),
-              const SizedBox(height: 20),
-              Text('How are you feeling? $emoji', style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold)),
-              const SizedBox(height: 20),
+              const SizedBox(height: 24),
+              Text('How are you feeling? $emoji', style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: Color(0xFF5C6BC0))),
+              const SizedBox(height: 24),
               TextField(
                 controller: controller,
+                autofocus: true,
                 decoration: InputDecoration(
                   hintText: 'Add a note (optional)...',
-                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(16)),
+                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(20), borderSide: BorderSide.none),
                   filled: true,
-                  fillColor: Theme.of(context).colorScheme.surfaceVariant,
+                  fillColor: const Color(0xFFF5F5F5),
                 ),
                 maxLines: 3,
               ),
@@ -308,16 +295,13 @@ class _MoodSelectorBodyState extends State<MoodSelectorBody> {
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
                   IconButton(
-                    iconSize: 40,
-                    icon: Icon(_isRecording ? Icons.stop_circle : Icons.mic, 
-                          color: _isRecording ? Colors.red : Theme.of(context).colorScheme.primary),
+                    iconSize: 50,
+                    icon: Icon(_isRecording ? Icons.stop_circle_rounded : Icons.mic_rounded, 
+                          color: _isRecording ? Colors.red : const Color(0xFF5C6BC0)),
                     onPressed: () async {
                       if (_isRecording) {
                         final path = await _audioRecorder.stop();
-                        setModalState(() {
-                          _isRecording = false;
-                          _currentRecordingPath = path;
-                        });
+                        setModalState(() { _isRecording = false; _currentRecordingPath = path; });
                       } else {
                         if (await _audioRecorder.hasPermission()) {
                           final directory = await getApplicationDocumentsDirectory();
@@ -328,30 +312,30 @@ class _MoodSelectorBodyState extends State<MoodSelectorBody> {
                       }
                     },
                   ),
-                  if (_currentRecordingPath != null && !_isRecording) const Text('Voice captured! ✅'),
-                  if (_isRecording) const Text('Recording... 🎙️'),
+                  if (_currentRecordingPath != null && !_isRecording) const Text('Voice captured! ✅', style: TextStyle(color: Colors.green, fontWeight: FontWeight.bold)),
+                  if (_isRecording) const Text('Recording... 🎙️', style: TextStyle(color: Colors.red, fontWeight: FontWeight.bold)),
                 ],
               ),
-              const SizedBox(height: 25),
+              const SizedBox(height: 24),
               SizedBox(
                 width: double.infinity,
-                height: 50,
+                height: 56,
                 child: ElevatedButton(
                   onPressed: () {
                     final entry = MoodEntry(emoji: emoji, note: controller.text, timestamp: DateTime.now(), voiceNotePath: _currentRecordingPath);
                     context.read<MoodProvider>().addEntry(entry);
                     Navigator.pop(context);
-                    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Mood logged!')));
+                    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Mood logged!'), behavior: SnackBarBehavior.floating));
                   },
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: Theme.of(context).colorScheme.primary, 
-                    foregroundColor: Theme.of(context).colorScheme.onPrimary, 
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16))
+                    backgroundColor: const Color(0xFF5C6BC0), 
+                    foregroundColor: Colors.white, 
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
+                    elevation: 0,
                   ),
                   child: const Text('Save Reflection', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
                 ),
               ),
-              const SizedBox(height: 30),
             ],
           ),
         ),
