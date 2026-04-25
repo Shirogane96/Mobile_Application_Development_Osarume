@@ -48,7 +48,7 @@ class MoodTrackApp extends StatelessWidget {
           title: 'EmojiTrack',
           debugShowCheckedModeBanner: false,
           theme: themeProvider.themeData,
-          home: _AppGate(),
+          home: const _AppGate(),
         );
       },
     );
@@ -56,6 +56,8 @@ class MoodTrackApp extends StatelessWidget {
 }
 
 class _AppGate extends StatefulWidget {
+  const _AppGate({super.key});
+
   @override
   State<_AppGate> createState() => _AppGateState();
 }
@@ -95,7 +97,7 @@ class _AppGateState extends State<_AppGate> with WidgetsBindingObserver {
     final security = context.watch<SecurityProvider>();
     final auth = context.watch<AuthProvider>();
 
-    // If lock is enabled and not authenticated, show a simple lock screen
+    // Priority 1: Security Lock
     if (security.isLockEnabled && !security.isAuthenticated) {
       return Scaffold(
         body: Center(
@@ -117,18 +119,21 @@ class _AppGateState extends State<_AppGate> with WidgetsBindingObserver {
       );
     }
 
-    if (!auth.isOnboardingCompleted) {
-      return const OnboardingScreen();
-    }
-    
+    // Priority 2: If user is ALREADY logged in, go to Home immediately
     if (auth.isAuthenticated) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         context.read<MoodProvider>().loadEntries();
       });
       return const HomeScreen();
-    } else {
-      return const LoginScreen();
     }
+
+    // Priority 3: If not logged in, show Onboarding (if not completed)
+    if (!auth.isOnboardingCompleted) {
+      return const OnboardingScreen();
+    }
+    
+    // Priority 4: Final fallback to Login
+    return const LoginScreen();
   }
 }
 

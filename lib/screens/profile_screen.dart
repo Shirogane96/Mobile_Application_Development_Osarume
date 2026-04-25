@@ -62,6 +62,30 @@ class _ProfileScreenState extends State<ProfileScreen> {
     }
   }
 
+  void _showLogoutDialog(BuildContext context, AuthProvider auth) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Logout'),
+        content: const Text('Are you sure you want to logout?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () {
+              Navigator.pop(context); // Close dialog
+              auth.logout();
+              Navigator.of(context).pop(); // Return to root (Home/Login)
+            },
+            child: const Text('Logout', style: TextStyle(color: Colors.red)),
+          ),
+        ],
+      ),
+    );
+  }
+
   Widget _buildAvatar(String? path, double radius, double fontSize) {
     final user = context.read<AuthProvider>().currentUser;
     final initial = user?.username.isNotEmpty == true ? user!.username[0].toUpperCase() : '?';
@@ -200,7 +224,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
               height: 50,
               child: ElevatedButton.icon(
                 onPressed: () {
-                  auth.logout();
+                  _showLogoutDialog(context, auth);
                 },
                 icon: const Icon(Icons.logout),
                 label: const Text('Logout'),

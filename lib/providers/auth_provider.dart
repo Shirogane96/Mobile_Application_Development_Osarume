@@ -2,7 +2,6 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:supabase_flutter/supabase_flutter.dart';
-import 'package:hive_flutter/hive_flutter.dart';
 import '../models/user_model.dart';
 
 class AuthProvider with ChangeNotifier {
@@ -15,19 +14,12 @@ class AuthProvider with ChangeNotifier {
   bool get isOnboardingCompleted => _isOnboardingCompleted;
 
   AuthProvider() {
-    _loadOnboardingStatus();
     _init();
   }
 
-  Future<void> _loadOnboardingStatus() async {
-    final box = await Hive.openBox('settings');
-    _isOnboardingCompleted = box.get('onboarding_completed', defaultValue: false);
-    notifyListeners();
-  }
-
+  // We no longer load onboarding status from Hive because the user wants it
+  // to show every time the app opens (if not logged in).
   Future<void> completeOnboarding() async {
-    final box = await Hive.openBox('settings');
-    await box.put('onboarding_completed', true);
     _isOnboardingCompleted = true;
     notifyListeners();
   }
@@ -35,6 +27,10 @@ class AuthProvider with ChangeNotifier {
   void _init() {
     _supabase.auth.onAuthStateChange.listen((data) {
       _refreshUser(data.session?.user);
+      // If the user logs out, reset onboarding so it shows again on next launch
+      if (data.session == null) {
+        _isOnboardingCompleted = false;
+      }
     });
   }
 
@@ -137,6 +133,7 @@ class AuthProvider with ChangeNotifier {
     try {
       await _supabase.auth.signOut();
       _currentUser = null;
+      _isOnboardingCompleted = false; // Reset for next launch
       notifyListeners();
     } catch (e) {
       debugPrint('Logout Error: $e');
